@@ -455,7 +455,10 @@ input[type="checkbox"].lg-input {
 @media (max-width: 900px) {
   .brand-sub { display: none; }
   .progress-wrap { display: none; }
-  .panel-map { grid-template-columns: 1fr; }
+  /* Match the desktop selector's specificity (.panel-map.active) so the mobile
+     single-column override actually wins. Otherwise the map renders in the
+     sidebar's 240px track and the right 1fr track sits empty (black). */
+  .panel-map.active { grid-template-columns: 1fr; }
   .sidebar { display: none; }
   /* On mobile the detail floats as a small bottom sheet so the map stays dominant. */
   .detail {

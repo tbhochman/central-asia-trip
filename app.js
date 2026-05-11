@@ -73,6 +73,14 @@ segments.forEach((seg, i) => {
 const allBounds = L.latLngBounds(STOPS.map((s) => s.coords));
 map.fitBounds(allBounds, { padding: [50, 50] });
 
+// Leaflet caches container dimensions on init. If the map was first laid out
+// while hidden behind the gate (display:none on the parent), Leaflet read a
+// 0×0 size. Re-measure now that the content is visible.
+requestAnimationFrame(() => {
+  map.invalidateSize();
+  map.fitBounds(allBounds, { padding: [50, 50] });
+});
+
 // ─────────────────────────────────────────────────────────────
 // Sidebar (day list)
 // ─────────────────────────────────────────────────────────────

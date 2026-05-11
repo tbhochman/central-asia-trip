@@ -10,11 +10,18 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="style.css" />
     <script>
       // Lock content until decryption succeeds. We always start locked —
       // even cached passwords still need to decrypt the data blob.
       document.documentElement.classList.add("locked");
+      // Inject style.css with a cache-busting query so CSS edits land on
+      // next reload instead of being held by the browser/Pages cache.
+      (function () {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "style.css?v=" + Date.now();
+        document.head.appendChild(link);
+      })();
     </script>
   </head>
   <body>
