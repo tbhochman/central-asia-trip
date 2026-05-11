@@ -14,7 +14,7 @@ const map = L.map("map", { zoomControl: true, attributionControl: true }).setVie
 );
 
 L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
   {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -51,7 +51,16 @@ STOPS.forEach((s) => {
 
 segments.forEach((seg, i) => {
   const prev = i > 0 ? segments[i - 1].stops.at(-1) : null;
-  const coords = (prev ? [prev, ...seg.stops] : seg.stops).map((s) => s.coords);
+  const stops = prev ? [prev, ...seg.stops] : seg.stops;
+  // Build coordinates list, inserting any per-stop `waypoints` BEFORE that stop's
+  // own coords so the line bends through them (e.g. Bukhara → Samarkand → Dushanbe).
+  const coords = [];
+  stops.forEach((s, j) => {
+    if (j > 0 && Array.isArray(s.waypoints)) {
+      s.waypoints.forEach((w) => coords.push(w));
+    }
+    coords.push(s.coords);
+  });
   L.polyline(
     coords,
     seg.isPamir
@@ -252,7 +261,6 @@ document.querySelectorAll(".tab").forEach((tab) => {
   });
 });
 
-// Open first stop by default
-selectStop(STOPS[1].id); // Almaty
+// Don't auto-open the detail panel — let the map be the dominant element on load.
 
 }; // end window.startApp

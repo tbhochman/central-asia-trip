@@ -39,15 +39,20 @@
         <div class="gate-err" id="gate-err"></div>
       </div>
     </div>
-    <script src="data.enc.js"></script>
     <script>
-      // AES-256-GCM decryption gate. The encrypted blob is loaded above;
-      // we derive a key from the password and try to decrypt. Wrong password
-      // = decrypt throws and content stays hidden.
+      // AES-256-GCM decryption gate. Encrypted blob is fetched at runtime with
+      // no-cache so trip-data updates show on next page load (no HTTP caching).
+      async function fetchEncryptedBlob() {
+        const resp = await fetch("data.enc.json?t=" + Date.now(), {
+          cache: "no-store",
+        });
+        if (!resp.ok) throw new Error("encrypted blob unavailable");
+        return resp.json();
+      }
+
       async function decryptTripData(password) {
-        const bytes = Uint8Array.from(atob(window.__ENCRYPTED_DATA), (c) =>
-          c.charCodeAt(0),
-        );
+        const { blob: b64, iter } = await fetchEncryptedBlob();
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
         const salt = bytes.slice(0, 16);
         const iv = bytes.slice(16, 28);
         const tag = bytes.slice(28, 44);
@@ -68,7 +73,7 @@
           {
             name: "PBKDF2",
             salt,
-            iterations: window.__ENCRYPTED_META?.iter || 200000,
+            iterations: iter || 200000,
             hash: "SHA-256",
           },
           baseKey,
@@ -89,6 +94,18 @@
       const err = document.getElementById("gate-err");
       const btn = form.querySelector("button");
 
+      // app.js may not have loaded yet when decryption finishes — wait for it.
+      function waitForStartApp() {
+        return new Promise((resolve) => {
+          if (typeof window.startApp === "function") return resolve();
+          const tick = () => {
+            if (typeof window.startApp === "function") resolve();
+            else setTimeout(tick, 20);
+          };
+          tick();
+        });
+      }
+
       async function tryUnlock(password) {
         err.textContent = "";
         btn.disabled = true;
@@ -98,6 +115,7 @@
           window.STOPS = data.STOPS;
           window.LOGISTICS = data.LOGISTICS;
           try { sessionStorage.setItem("trip-pw", password); } catch (e) {}
+          await waitForStartApp();
           document.documentElement.classList.remove("locked");
           document.getElementById("gate").remove();
           window.startApp();
