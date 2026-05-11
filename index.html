@@ -29,6 +29,9 @@
             type="password"
             placeholder="Password"
             autocomplete="current-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
             autofocus
           />
           <button type="submit">Unlock</button>
@@ -109,7 +112,7 @@
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
-        tryUnlock(input.value.trim().toLowerCase());
+        tryUnlock(input.value.trim());
       });
 
       // Auto-unlock if password is cached in sessionStorage

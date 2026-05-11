@@ -1,12 +1,15 @@
 // Encrypts data.js -> data.enc.js using AES-256-GCM with PBKDF2-derived key.
-// Usage:  PASSWORD=pamirs node build.js
-// Default password is "pamirs" if env var not set.
+// Usage:  PASSWORD='your-password' node build.js
 
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
 
-const password = process.env.PASSWORD || "pamirs";
+const password = process.env.PASSWORD;
+if (!password) {
+  console.error("Set PASSWORD env var. Example: PASSWORD='secret' node build.js");
+  process.exit(1);
+}
 const dataPath = path.join(__dirname, "data.js");
 const outPath = path.join(__dirname, "data.enc.js");
 

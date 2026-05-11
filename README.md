@@ -6,11 +6,8 @@ checkable logistics tracker. Password-gated with client-side AES-256-GCM.
 ## Editing trip data
 
 1. Edit `data.js` (gitignored — not committed)
-2. Run `node build.js` to regenerate `data.enc.js`
+2. Run `PASSWORD='your-password' node build.js` to regenerate `data.enc.js`
 3. Commit `data.enc.js` and push
-
-The password is set in `build.js` (defaults to `pamirs`). To change it,
-re-run with `PASSWORD=newpassword node build.js`.
 
 ## Local dev
 
