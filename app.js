@@ -24,8 +24,6 @@ L.tileLayer(
 ).addTo(map);
 
 const markers = {};
-const pamirStops = STOPS.filter((s) => s.kind === "pamir");
-const cityStops = STOPS.filter((s) => s.kind !== "pamir");
 
 STOPS.forEach((stop, i) => {
   const icon = L.divIcon({
@@ -39,20 +37,28 @@ STOPS.forEach((stop, i) => {
   markers[stop.id] = m;
 });
 
-// Draw the route as a polyline (city → city → pamir leg)
-const cityLine = L.polyline(
-  cityStops.map((s) => s.coords),
-  { color: "#6aa9ff", weight: 2.5, opacity: 0.7, dashArray: "6 6" },
-).addTo(map);
+// Draw the route as contiguous segments — pamir vs non-pamir each get their
+// own style. Each segment is bridged to the previous one's last stop so the
+// line stays unbroken across boundaries (e.g. Dushanbe → Kalaikhumb is orange,
+// Osh → Bishkek is blue).
+const segments = [];
+STOPS.forEach((s) => {
+  const isPamir = s.kind === "pamir";
+  const last = segments[segments.length - 1];
+  if (last && last.isPamir === isPamir) last.stops.push(s);
+  else segments.push({ isPamir, stops: [s] });
+});
 
-const pamirLine = L.polyline(
-  // From Dushanbe through all Pamir stops to Osh
-  [
-    STOPS.find((s) => s.id === "dushanbe").coords,
-    ...pamirStops.map((s) => s.coords),
-  ],
-  { color: "#ffb155", weight: 3, opacity: 0.85 },
-).addTo(map);
+segments.forEach((seg, i) => {
+  const prev = i > 0 ? segments[i - 1].stops.at(-1) : null;
+  const coords = (prev ? [prev, ...seg.stops] : seg.stops).map((s) => s.coords);
+  L.polyline(
+    coords,
+    seg.isPamir
+      ? { color: "#ffb155", weight: 3, opacity: 0.85 }
+      : { color: "#6aa9ff", weight: 2.5, opacity: 0.7, dashArray: "6 6" },
+  ).addTo(map);
+});
 
 // Fit bounds across the whole route
 const allBounds = L.latLngBounds(STOPS.map((s) => s.coords));
