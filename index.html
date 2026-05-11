@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Central Asia · August 2026</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Lock content until decryption succeeds. We always start locked —
+      // even cached passwords still need to decrypt the data blob.
+      document.documentElement.classList.add("locked");
+    </script>
+  </head>
+  <body>
+    <div id="gate">
+      <div class="gate-card">
+        <div class="gate-mark">CA</div>
+        <div class="gate-title">Central Asia · Aug 2026</div>
+        <div class="gate-sub">Enter password to continue</div>
+        <form id="gate-form" autocomplete="off">
+          <input
+            id="gate-input"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+            autofocus
+          />
+          <button type="submit">Unlock</button>
+        </form>
+        <div class="gate-err" id="gate-err"></div>
+      </div>
+    </div>
+    <script src="data.enc.js"></script>
+    <script>
+      // AES-256-GCM decryption gate. The encrypted blob is loaded above;
+      // we derive a key from the password and try to decrypt. Wrong password
+      // = decrypt throws and content stays hidden.
+      async function decryptTripData(password) {
+        const bytes = Uint8Array.from(atob(window.__ENCRYPTED_DATA), (c) =>
+          c.charCodeAt(0),
+        );
+        const salt = bytes.slice(0, 16);
+        const iv = bytes.slice(16, 28);
+        const tag = bytes.slice(28, 44);
+        const ct = bytes.slice(44);
+        // Web Crypto AES-GCM wants ciphertext || tag
+        const ctWithTag = new Uint8Array(ct.length + tag.length);
+        ctWithTag.set(ct);
+        ctWithTag.set(tag, ct.length);
+
+        const baseKey = await crypto.subtle.importKey(
+          "raw",
+          new TextEncoder().encode(password),
+          { name: "PBKDF2" },
+          false,
+          ["deriveKey"],
+        );
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt,
+            iterations: window.__ENCRYPTED_META?.iter || 200000,
+            hash: "SHA-256",
+          },
+          baseKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"],
+        );
+        const plain = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv },
+          key,
+          ctWithTag,
+        );
+        return JSON.parse(new TextDecoder().decode(plain));
+      }
+
+      const form = document.getElementById("gate-form");
+      const input = document.getElementById("gate-input");
+      const err = document.getElementById("gate-err");
+      const btn = form.querySelector("button");
+
+      async function tryUnlock(password) {
+        err.textContent = "";
+        btn.disabled = true;
+        btn.textContent = "Unlocking…";
+        try {
+          const data = await decryptTripData(password);
+          window.STOPS = data.STOPS;
+          window.LOGISTICS = data.LOGISTICS;
+          try { sessionStorage.setItem("trip-pw", password); } catch (e) {}
+          document.documentElement.classList.remove("locked");
+          document.getElementById("gate").remove();
+          window.startApp();
+          setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = "Unlock";
+          err.textContent = "Nope. Try again.";
+          input.select();
+        }
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        tryUnlock(input.value.trim().toLowerCase());
+      });
+
+      // Auto-unlock if password is cached in sessionStorage
+      const cached = (() => {
+        try { return sessionStorage.getItem("trip-pw"); } catch (e) { return null; }
+      })();
+      if (cached) tryUnlock(cached);
+    </script>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">CA</div>
+        <div>
+          <div class="brand-title">Central Asia · Aug 2026</div>
+          <div class="brand-sub">
+            Almaty → Tashkent → Samarkand → Bukhara → Dushanbe →
+            <span class="hl">Pamir Highway</span> → Osh
+          </div>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="map">Map</button>
+        <button class="tab" data-tab="itinerary">Itinerary</button>
+        <button class="tab" data-tab="logistics">
+          Logistics <span class="badge" id="logistics-count">0</span>
+        </button>
+      </nav>
+      <div class="progress-wrap" title="Logistics resolved">
+        <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-label" id="progress-label">0 / 0</div>
+      </div>
+    </header>
+
+    <main>
+      <!-- MAP TAB -->
+      <section class="panel-map view active" data-view="map">
+        <aside class="sidebar" id="day-list"></aside>
+        <div id="map"></div>
+        <div class="detail" id="detail">
+          <button class="detail-close" id="detail-close" aria-label="Close">×</button>
+          <div id="detail-body"></div>
+        </div>
+      </section>
+
+      <!-- ITINERARY TAB -->
+      <section class="view" data-view="itinerary">
+        <div class="timeline" id="timeline"></div>
+      </section>
+
+      <!-- LOGISTICS TAB -->
+      <section class="view" data-view="logistics">
+        <div class="logistics" id="logistics"></div>
+      </section>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="app.js"></script>
+  </body>
+</html>

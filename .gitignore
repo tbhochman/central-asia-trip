@@ -1,0 +1,8 @@
+# Plaintext trip data — never commit. Edit locally, run `node build.js` to regenerate data.enc.js.
+data.js
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+*.swp
+node_modules/
