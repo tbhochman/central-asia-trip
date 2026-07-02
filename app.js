@@ -361,7 +361,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
 
 // Don't auto-open the detail panel — let the map be the dominant element on load.
 // During the trip itself, open straight to today's Wallet — that's the daily view.
-if (today >= "2026-08-05" && today <= "2026-08-23") {
+if (today >= "2026-08-03" && today <= "2026-08-24") {
   switchTab("wallet");
 }
 
