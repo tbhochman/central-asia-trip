@@ -22,3 +22,4 @@ python3 -m http.server 8766
 - The encrypted blob is in `data.enc.js`; without the password, it's ciphertext
 - Source files (HTML, CSS, app.js, build.js) are not encrypted — only the trip data is
 - This is client-side; a determined attacker with the URL could brute-force a weak password
+
