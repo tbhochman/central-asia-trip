@@ -160,9 +160,21 @@
       })();
       if (cached) tryUnlock(cached);
 
-      // PWA: register service worker for offline use
+      // PWA: register service worker for offline use. update() forces an
+      // update check on every launch (iOS PWAs can be lazy about this).
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("sw.js").catch(() => {});
+        navigator.serviceWorker
+          .register("sw.js")
+          .then((reg) => reg.update().catch(() => {}))
+          .catch(() => {});
+        // When a new version of the shell takes over, reload once so the
+        // user immediately runs the fresh code instead of the stale cache.
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        });
       }
       window.addEventListener("offline", () =>
         document.getElementById("offline-banner").classList.add("show"),

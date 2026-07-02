@@ -43,6 +43,21 @@ const jsonPath = path.join(__dirname, "data.enc.json");
 fs.writeFileSync(jsonPath, jsonOut);
 console.log(`Wrote ${jsonPath} (${ct.length} bytes ciphertext, ${blob.length} chars base64)`);
 
+// Stamp the service worker with a shell version = hash of the app-shell
+// files. When any of them changes, sw.js changes too, which triggers the
+// browser's service-worker update flow on installed PWAs.
+const shellFiles = ["index.html", "app.js", "style.css", "manifest.json"];
+const shellHash = crypto
+  .createHash("sha256")
+  .update(shellFiles.map((f) => fs.readFileSync(path.join(__dirname, f))).join("\n"))
+  .digest("hex")
+  .slice(0, 12);
+const swPath = path.join(__dirname, "sw.js");
+const swSrc = fs.readFileSync(swPath, "utf8");
+const swOut = swSrc.replace(/const VERSION = "[^"]*";/, `const VERSION = "${shellHash}";`);
+if (swOut !== swSrc) fs.writeFileSync(swPath, swOut);
+console.log(`Shell version: ${shellHash}`);
+
 // Encrypt ticket files (tickets/ → tickets-enc/*.enc). Same password, same
 // self-contained binary layout: salt(16) | iv(12) | tag(16) | ct.
 const ticketsDir = path.join(__dirname, "tickets");
