@@ -2,8 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Central Asia · August 2026</title>
+    <meta name="theme-color" content="#0e1116" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Central Asia" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -121,7 +127,9 @@
           const data = await decryptTripData(password);
           window.STOPS = data.STOPS;
           window.LOGISTICS = data.LOGISTICS;
-          try { sessionStorage.setItem("trip-pw", password); } catch (e) {}
+          window.WALLET = data.WALLET || [];
+          // localStorage (not session) so the installed PWA unlocks instantly
+          try { localStorage.setItem("trip-pw", password); } catch (e) {}
           await waitForStartApp();
           document.documentElement.classList.remove("locked");
           document.getElementById("gate").remove();
@@ -140,11 +148,28 @@
         tryUnlock(input.value.trim());
       });
 
-      // Auto-unlock if password is cached in sessionStorage
+      // Auto-unlock with cached password (migrate old sessionStorage copy too)
       const cached = (() => {
-        try { return sessionStorage.getItem("trip-pw"); } catch (e) { return null; }
+        try {
+          return (
+            localStorage.getItem("trip-pw") || sessionStorage.getItem("trip-pw")
+          );
+        } catch (e) {
+          return null;
+        }
       })();
       if (cached) tryUnlock(cached);
+
+      // PWA: register service worker for offline use
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      }
+      window.addEventListener("offline", () =>
+        document.getElementById("offline-banner").classList.add("show"),
+      );
+      window.addEventListener("online", () =>
+        document.getElementById("offline-banner").classList.remove("show"),
+      );
     </script>
 
     <header class="topbar">
@@ -159,6 +184,7 @@
         </div>
       </div>
       <nav class="tabs">
+        <button class="tab" data-tab="wallet">Wallet</button>
         <button class="tab active" data-tab="map">Map</button>
         <button class="tab" data-tab="itinerary">Itinerary</button>
         <button class="tab" data-tab="logistics">
@@ -191,7 +217,14 @@
       <section class="view" data-view="logistics">
         <div class="logistics" id="logistics"></div>
       </section>
+
+      <!-- WALLET TAB -->
+      <section class="view" data-view="wallet">
+        <div class="wallet" id="wallet"></div>
+      </section>
     </main>
+
+    <div id="offline-banner">Offline — showing saved data</div>
 
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

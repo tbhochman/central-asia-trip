@@ -3,6 +3,7 @@
 window.startApp = function startApp() {
   const STOPS = window.STOPS;
   const LOGISTICS = window.LOGISTICS;
+  const WALLET = window.WALLET || [];
 
 // ─────────────────────────────────────────────────────────────
 // Map setup
@@ -253,22 +254,115 @@ function updateCounts() {
 updateCounts();
 
 // ─────────────────────────────────────────────────────────────
+// Wallet: day-by-day tickets, hotels, confirmation codes
+// ─────────────────────────────────────────────────────────────
+
+const TYPE_META = {
+  flight: { icon: "✈️", label: "Flight" },
+  train: { icon: "🚆", label: "Train" },
+  hotel: { icon: "🏨", label: "Hotel" },
+  tour: { icon: "🏔", label: "Tour" },
+  gap: { icon: "⚠️", label: "To book" },
+  info: { icon: "📍", label: "Plan" },
+};
+
+function todayISO() {
+  const d = new Date();
+  return (
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0")
+  );
+}
+
+const walletEl = document.getElementById("wallet");
+const today = todayISO();
+
+WALLET.forEach((day, di) => {
+  // A multi-day block (e.g. "Aug 13–20") is "today" if today falls between
+  // its date and the next block's date.
+  const next = WALLET[di + 1];
+  const isToday = today >= day.date && (!next || today < next.date);
+  const isPast = next && today >= next.date;
+
+  const dayEl = document.createElement("section");
+  dayEl.className = "w-day" + (isToday ? " today" : "") + (isPast ? " past" : "");
+  dayEl.innerHTML = `
+    <header class="w-day-head">
+      <span class="w-day-label">${escapeHtml(day.label)}</span>
+      ${isToday ? '<span class="w-today-chip">TODAY</span>' : ""}
+    </header>
+  `;
+
+  day.items.forEach((item) => {
+    const meta = TYPE_META[item.type] || TYPE_META.info;
+    const card = document.createElement("article");
+    card.className = `w-card w-${item.type}`;
+    card.innerHTML = `
+      <div class="w-card-head">
+        <span class="w-icon">${meta.icon}</span>
+        <div class="w-card-title-wrap">
+          <div class="w-card-title">${escapeHtml(item.title)}</div>
+          ${item.sub ? `<div class="w-card-sub">${escapeHtml(item.sub)}</div>` : ""}
+        </div>
+        ${item.time ? `<div class="w-time">${escapeHtml(item.time)}</div>` : ""}
+      </div>
+      ${item.carrier ? `<div class="w-row"><span class="w-k">Carrier</span><span class="w-v">${escapeHtml(item.carrier)}</span></div>` : ""}
+      ${item.conf ? `<div class="w-row w-conf-row"><span class="w-k">Conf</span><button class="w-conf" data-copy="${escapeHtml(item.conf)}">${escapeHtml(item.conf)}</button></div>` : ""}
+      ${item.address ? `<div class="w-row"><span class="w-k">Address</span><span class="w-v">${escapeHtml(item.address)}</span></div>` : ""}
+      ${item.notes ? `<div class="w-notes">${escapeHtml(item.notes)}</div>` : ""}
+    `;
+    dayEl.appendChild(card);
+  });
+
+  walletEl.appendChild(dayEl);
+});
+
+// Tap a confirmation code to copy it
+walletEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".w-conf");
+  if (!btn) return;
+  const text = btn.dataset.copy;
+  (navigator.clipboard?.writeText(text) || Promise.reject()).then(
+    () => {
+      const prev = btn.textContent;
+      btn.textContent = "Copied ✓";
+      setTimeout(() => (btn.textContent = prev), 1200);
+    },
+    () => {},
+  );
+});
+
+function openWalletToday() {
+  const el = walletEl.querySelector(".w-day.today");
+  if (el) el.scrollIntoView({ block: "start" });
+}
+
+// ─────────────────────────────────────────────────────────────
 // Tab switching
 // ─────────────────────────────────────────────────────────────
 
+function switchTab(target) {
+  document
+    .querySelectorAll(".tab")
+    .forEach((t) => t.classList.toggle("active", t.dataset.tab === target));
+  document
+    .querySelectorAll(".view")
+    .forEach((v) => v.classList.toggle("active", v.dataset.view === target));
+  if (target === "map") setTimeout(() => map.invalidateSize(), 50);
+  if (target === "wallet") openWalletToday();
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    const target = tab.dataset.tab;
-    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
-    document
-      .querySelectorAll(".view")
-      .forEach((v) => v.classList.toggle("active", v.dataset.view === target));
-    if (target === "map") {
-      setTimeout(() => map.invalidateSize(), 50);
-    }
-  });
+  tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
 
 // Don't auto-open the detail panel — let the map be the dominant element on load.
+// During the trip itself, open straight to today's Wallet — that's the daily view.
+if (today >= "2026-08-05" && today <= "2026-08-23") {
+  switchTab("wallet");
+}
 
 }; // end window.startApp
