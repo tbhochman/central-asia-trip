@@ -1,5 +1,8 @@
-# Plaintext trip data — never commit. Edit locally, run `node build.js` to regenerate data.enc.js.
+# Plaintext trip data — never commit. Edit locally, run `node build.js` to regenerate data.enc.json.
 data.js
+
+# Plaintext ticket PDFs — never commit. Encrypted copies land in tickets-enc/.
+tickets/
 
 # OS / editor cruft
 .DS_Store

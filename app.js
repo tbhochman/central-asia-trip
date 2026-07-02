@@ -313,6 +313,12 @@ WALLET.forEach((day, di) => {
       ${item.conf ? `<div class="w-row w-conf-row"><span class="w-k">Conf</span><button class="w-conf" data-copy="${escapeHtml(item.conf)}">${escapeHtml(item.conf)}</button></div>` : ""}
       ${item.address ? `<div class="w-row"><span class="w-k">Address</span><span class="w-v">${escapeHtml(item.address)}</span></div>` : ""}
       ${item.notes ? `<div class="w-notes">${escapeHtml(item.notes)}</div>` : ""}
+      ${(item.attachments || [])
+        .map(
+          (a) =>
+            `<button class="w-att" data-file="${escapeHtml(a.file)}">📎 ${escapeHtml(a.label || a.file)}</button>`,
+        )
+        .join("")}
     `;
     dayEl.appendChild(card);
   });
@@ -334,6 +340,86 @@ walletEl.addEventListener("click", (e) => {
     () => {},
   );
 });
+
+// ─── Encrypted ticket attachments ───
+// Files live in tickets-enc/<name>.enc — AES-256-GCM, layout
+// salt(16) | iv(12) | tag(16) | ct, same password as the trip data.
+
+async function decryptTicket(file) {
+  const resp = await fetch("tickets-enc/" + file + ".enc");
+  if (!resp.ok) throw new Error("ticket fetch failed");
+  const bytes = new Uint8Array(await resp.arrayBuffer());
+  const salt = bytes.slice(0, 16);
+  const iv = bytes.slice(16, 28);
+  const tag = bytes.slice(28, 44);
+  const ct = bytes.slice(44);
+  const ctWithTag = new Uint8Array(ct.length + tag.length);
+  ctWithTag.set(ct);
+  ctWithTag.set(tag, ct.length);
+  const password = localStorage.getItem("trip-pw");
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"],
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 200000, hash: "SHA-256" },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"],
+  );
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ctWithTag);
+  return new Blob([plain], { type: "application/pdf" });
+}
+
+const ticketUrlCache = {};
+
+walletEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".w-att");
+  if (!btn || btn.dataset.busy) return;
+  const file = btn.dataset.file;
+  const prev = btn.textContent;
+  try {
+    let url = ticketUrlCache[file];
+    if (!url) {
+      btn.dataset.busy = "1";
+      btn.textContent = "🔓 Decrypting…";
+      const blob = await decryptTicket(file);
+      url = URL.createObjectURL(blob);
+      ticketUrlCache[file] = url;
+    }
+    btn.textContent = prev;
+    delete btn.dataset.busy;
+    const win = window.open(url, "_blank");
+    if (!win) {
+      // Pop-up blocked (common in standalone PWAs): swap in a real link.
+      const a = document.createElement("a");
+      a.className = "w-att";
+      a.href = url;
+      a.target = "_blank";
+      a.textContent = "📄 Tap to open " + (btn.textContent.replace(/^📎 /, "") || "ticket");
+      btn.replaceWith(a);
+    }
+  } catch (err) {
+    btn.textContent = "⚠️ Couldn't decrypt — reload & retry";
+    delete btn.dataset.busy;
+    setTimeout(() => (btn.textContent = prev), 2500);
+  }
+});
+
+// Warm the service-worker cache so tickets open in airplane mode.
+setTimeout(() => {
+  WALLET.forEach((day) =>
+    (day.items || []).forEach((item) =>
+      (item.attachments || []).forEach((a) => {
+        fetch("tickets-enc/" + a.file + ".enc").catch(() => {});
+      }),
+    ),
+  );
+}, 3000);
 
 function openWalletToday() {
   const el = walletEl.querySelector(".w-day.today");

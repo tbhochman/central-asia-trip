@@ -546,6 +546,23 @@ input[type="checkbox"].lg-input {
   color: #b9c2ce;
 }
 
+.w-att {
+  display: inline-block;
+  margin-top: 10px;
+  margin-right: 8px;
+  padding: 8px 14px;
+  background: var(--bg-3);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.w-att:active { background: var(--border); }
+
 /* Offline banner */
 #offline-banner {
   display: none;

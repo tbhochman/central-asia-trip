@@ -42,3 +42,23 @@ const jsonOut = JSON.stringify({ blob, iter: ITER, alg: "AES-256-GCM", kdf: "PBK
 const jsonPath = path.join(__dirname, "data.enc.json");
 fs.writeFileSync(jsonPath, jsonOut);
 console.log(`Wrote ${jsonPath} (${ct.length} bytes ciphertext, ${blob.length} chars base64)`);
+
+// Encrypt ticket files (tickets/ → tickets-enc/*.enc). Same password, same
+// self-contained binary layout: salt(16) | iv(12) | tag(16) | ct.
+const ticketsDir = path.join(__dirname, "tickets");
+const ticketsOut = path.join(__dirname, "tickets-enc");
+if (fs.existsSync(ticketsDir)) {
+  fs.mkdirSync(ticketsOut, { recursive: true });
+  for (const name of fs.readdirSync(ticketsDir)) {
+    if (name.startsWith(".")) continue;
+    const plain = fs.readFileSync(path.join(ticketsDir, name));
+    const tSalt = crypto.randomBytes(16);
+    const tIv = crypto.randomBytes(12);
+    const tKey = crypto.pbkdf2Sync(password, tSalt, ITER, 32, "sha256");
+    const tCipher = crypto.createCipheriv("aes-256-gcm", tKey, tIv);
+    const tCt = Buffer.concat([tCipher.update(plain), tCipher.final()]);
+    const outFile = path.join(ticketsOut, name + ".enc");
+    fs.writeFileSync(outFile, Buffer.concat([tSalt, tIv, tCipher.getAuthTag(), tCt]));
+    console.log(`Encrypted ticket: ${name} → tickets-enc/${name}.enc (${tCt.length} bytes)`);
+  }
+}
