@@ -563,6 +563,161 @@ input[type="checkbox"].lg-input {
 }
 .w-att:active { background: var(--border); }
 
+/* ───── Food view ───── */
+.food {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 14px 80px;
+}
+.view[data-view="food"] { overflow-y: auto; }
+
+.fd-section { margin-bottom: 28px; }
+.fd-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.fd-section-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 6px 0 4px;
+}
+.fd-section > .fd-phrase,
+.fd-section > .fd-vocab,
+.fd-section > .fd-dish,
+.fd-section > .fd-city,
+.fd-section > .fd-epi { margin-top: 10px; }
+
+/* Phrase cards */
+.fd-phrase {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.fd-phrase-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.fd-phrase-lang { font-weight: 700; font-size: 13px; }
+.fd-phrase-where { font-size: 11px; color: var(--muted); }
+.fd-phrase-text { font-size: 15px; line-height: 1.55; }
+.fd-phrase.big .fd-phrase-text { font-size: 22px; line-height: 1.5; }
+.fd-phrase-translit {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 6px;
+}
+.fd-phrase-quick {
+  font-size: 12px;
+  color: #b9c2ce;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+/* Vocab rows */
+.fd-vocab {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.fd-vocab-en { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.fd-vocab-words { display: flex; flex-wrap: wrap; gap: 6px; }
+.fd-chip {
+  font-size: 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: #c8d1dd;
+}
+.fd-chip b { color: var(--accent); font-size: 10px; margin-right: 4px; }
+
+/* Dish traffic light */
+.fd-dish {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.fd-dish.fd-safe { border-left: 3px solid var(--ok); }
+.fd-dish.fd-ask { border-left: 3px solid var(--accent); }
+.fd-dish.fd-avoid { border-left: 3px solid var(--accent-2); }
+.fd-dish-name { font-size: 13.5px; font-weight: 600; }
+.fd-dish-note { font-size: 12.5px; color: #b9c2ce; margin-top: 3px; line-height: 1.5; }
+
+/* City cards */
+.fd-city {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.fd-city-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.fd-city-name { font-size: 15px; font-weight: 700; }
+.fd-city-days { font-size: 12px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.fd-meal {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+.fd-meal-k {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.fd-meal-v { font-size: 13px; line-height: 1.55; color: #d5dde6; }
+.fd-city-warn {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: #1c1710;
+  border: 1px dashed #7a5c2e;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #e4c88e;
+}
+
+/* Snack lists */
+.fd-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.fd-list li { font-size: 13px; line-height: 1.6; margin-bottom: 5px; color: #d5dde6; }
+
+/* EpiPen rows */
+.fd-epi {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--city);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.fd-epi-k { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--city); }
+.fd-epi-v { font-size: 13px; line-height: 1.55; color: #d5dde6; margin-top: 3px; }
+
 /* Offline banner */
 #offline-banner {
   display: none;
@@ -589,6 +744,14 @@ input[type="checkbox"].lg-input {
 @media (max-width: 900px) {
   .brand-sub { display: none; }
   .progress-wrap { display: none; }
+  /* Five tabs now — let the row scroll instead of overflowing the topbar. */
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 6px 9px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
   /* Match the desktop selector's specificity (.panel-map.active) so the mobile
      single-column override actually wins. Otherwise the map renders in the
      sidebar's 240px track and the right 1fr track sits empty (black). */

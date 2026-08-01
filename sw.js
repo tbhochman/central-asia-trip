@@ -5,7 +5,7 @@
 // Tiles and ticket files live in separate persistent caches so a shell
 // update never wipes offline map areas or decryptable tickets mid-trip.
 
-const VERSION = "ad2f6192852f";
+const VERSION = "6a9c2890dd2c";
 const SHELL_CACHE = "shell-" + VERSION;
 const TILES_CACHE = "tiles-v1";
 const FILES_CACHE = "files-v1";

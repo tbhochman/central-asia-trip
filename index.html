@@ -128,6 +128,7 @@
           window.STOPS = data.STOPS;
           window.LOGISTICS = data.LOGISTICS;
           window.WALLET = data.WALLET || [];
+          window.FOOD = data.FOOD || null;
           // localStorage (not session) so the installed PWA unlocks instantly
           try { localStorage.setItem("trip-pw", password); } catch (e) {}
           await waitForStartApp();
@@ -199,6 +200,7 @@
         <button class="tab" data-tab="wallet">Wallet</button>
         <button class="tab active" data-tab="map">Map</button>
         <button class="tab" data-tab="itinerary">Itinerary</button>
+        <button class="tab" data-tab="food">Food</button>
         <button class="tab" data-tab="logistics">
           Logistics <span class="badge" id="logistics-count">0</span>
         </button>
@@ -228,6 +230,11 @@
       <!-- LOGISTICS TAB -->
       <section class="view" data-view="logistics">
         <div class="logistics" id="logistics"></div>
+      </section>
+
+      <!-- FOOD TAB -->
+      <section class="view" data-view="food">
+        <div class="food" id="food"></div>
       </section>
 
       <!-- WALLET TAB -->

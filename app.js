@@ -427,6 +427,150 @@ function openWalletToday() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Food tab: nut-allergy field guide
+// ─────────────────────────────────────────────────────────────
+
+const FOOD = window.FOOD;
+const foodEl = document.getElementById("food");
+
+if (FOOD && foodEl) {
+  const frag = document.createDocumentFragment();
+
+  function foodSection(title, sub) {
+    const el = document.createElement("div");
+    el.className = "fd-section";
+    el.innerHTML = `
+      <div class="fd-section-title">${escapeHtml(title)}</div>
+      ${sub ? `<div class="fd-section-sub">${escapeHtml(sub)}</div>` : ""}
+    `;
+    frag.appendChild(el);
+    return el;
+  }
+
+  // 1 · Show-this-to-the-waiter phrases
+  const phrasesSec = foodSection(
+    "🚨 Show this to the waiter",
+    "Tap a card to enlarge. One per language — hand your phone over.",
+  );
+  FOOD.phrases.forEach((p) => {
+    const card = document.createElement("div");
+    card.className = "fd-phrase";
+    card.innerHTML = `
+      <div class="fd-phrase-head">
+        <span class="fd-phrase-lang">${escapeHtml(p.lang)}</span>
+        <span class="fd-phrase-where">${escapeHtml(p.where)}</span>
+      </div>
+      <div class="fd-phrase-text">${escapeHtml(p.text)}</div>
+      ${p.translit ? `<div class="fd-phrase-translit">${escapeHtml(p.translit)}</div>` : ""}
+      <div class="fd-phrase-quick">Quick ask: ${escapeHtml(p.quick)}</div>
+    `;
+    card.addEventListener("click", () => card.classList.toggle("big"));
+    phrasesSec.appendChild(card);
+  });
+
+  // 2 · Label decoder
+  const vocabSec = foodSection(
+    "🔍 Label decoder",
+    "Scan Состав / Tarkibi (ingredients) for these words. KZ & KG labels are usually also in Russian.",
+  );
+  FOOD.vocab.forEach((v) => {
+    const row = document.createElement("div");
+    row.className = "fd-vocab";
+    row.innerHTML = `
+      <div class="fd-vocab-en">${escapeHtml(v.en)}</div>
+      <div class="fd-vocab-words">${v.words
+        .map(
+          ([lang, w]) =>
+            `<span class="fd-chip"><b>${escapeHtml(lang)}</b> ${escapeHtml(w)}</span>`,
+        )
+        .join("")}</div>
+    `;
+    vocabSec.appendChild(row);
+  });
+
+  // 3 · Dish traffic light
+  const dishGroups = [
+    ["safe", "🟢 Safe bets", "No nuts in any standard recipe — your default orders."],
+    ["ask", "🟡 Ask first", "Usually fine, but say the phrase before ordering."],
+    ["avoid", "🔴 Avoid", "Not worth the roulette."],
+  ];
+  dishGroups.forEach(([key, title, sub]) => {
+    const sec = foodSection(title, sub);
+    FOOD.dishes[key].forEach((d) => {
+      const el = document.createElement("div");
+      el.className = `fd-dish fd-${key}`;
+      el.innerHTML = `
+        <div class="fd-dish-name">${escapeHtml(d.name)}</div>
+        <div class="fd-dish-note">${escapeHtml(d.note)}</div>
+      `;
+      sec.appendChild(el);
+    });
+  });
+
+  // 4 · City-by-city plan
+  const citySec = foodSection(
+    "🏙️ Where to eat, city by city",
+    "Breakfast / lunch / dinner / snack pickup for every non-Pamir day.",
+  );
+  FOOD.cities.forEach((c) => {
+    const el = document.createElement("div");
+    el.className = "fd-city";
+    el.innerHTML = `
+      <div class="fd-city-head">
+        <span class="fd-city-name">${escapeHtml(c.name)}</span>
+        <span class="fd-city-days">${escapeHtml(c.days)}</span>
+      </div>
+      ${c.meals
+        .map(
+          ([meal, text]) => `
+        <div class="fd-meal">
+          <div class="fd-meal-k">${escapeHtml(meal)}</div>
+          <div class="fd-meal-v">${escapeHtml(text)}</div>
+        </div>`,
+        )
+        .join("")}
+      ${c.warn ? `<div class="fd-city-warn">⚠️ ${escapeHtml(c.warn)}</div>` : ""}
+    `;
+    citySec.appendChild(el);
+  });
+
+  // 5 · Snacks
+  const packSec = foodSection("🎒 Snacks to pack from home", "Nut-free-facility brands — order before Aug 3.");
+  const packUl = document.createElement("ul");
+  packUl.className = "fd-list";
+  FOOD.snacks.pack.forEach((s) => {
+    const li = document.createElement("li");
+    li.textContent = s;
+    packUl.appendChild(li);
+  });
+  packSec.appendChild(packUl);
+
+  const localSec = foodSection("🛒 Safe snacks to buy there", "Supermarket > bazaar bin, always.");
+  const localUl = document.createElement("ul");
+  localUl.className = "fd-list";
+  FOOD.snacks.local.forEach((s) => {
+    const li = document.createElement("li");
+    li.textContent = s;
+    localUl.appendChild(li);
+  });
+  localSec.appendChild(localUl);
+
+  // 6 · EpiPen protocol
+  const epiSec = foodSection("💉 EpiPen heat protocol", "Two pens, 20 days, no resupply anywhere on the route.");
+  FOOD.epipen.forEach(([k, v]) => {
+    const el = document.createElement("div");
+    el.className = "fd-epi";
+    el.innerHTML = `
+      <div class="fd-epi-k">${escapeHtml(k)}</div>
+      <div class="fd-epi-v">${escapeHtml(v)}</div>
+    `;
+    epiSec.appendChild(el);
+  });
+
+  foodEl.appendChild(frag);
+}
+
+// ─────────────────────────────────────────────────────────────
 // Tab switching
 // ─────────────────────────────────────────────────────────────
 
