@@ -83,6 +83,140 @@ requestAnimationFrame(() => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// Live inReach layer
+// A GitHub Action (track.yml) polls the Garmin MapShare feed and publishes
+// track.enc.json — encrypted with the trip password — to the `track` branch.
+// Absent file (tracking off / not configured) = no layer, silently.
+// ─────────────────────────────────────────────────────────────
+
+const TRACK_URL =
+  location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "track.enc.json"
+    : "https://raw.githubusercontent.com/tbhochman/central-asia-trip/track/track.enc.json";
+
+const liveLayer = L.layerGroup().addTo(map);
+let livePillCtl = null;
+
+async function decryptBlobJson(encJson) {
+  const bytes = Uint8Array.from(atob(encJson.blob), (c) => c.charCodeAt(0));
+  const salt = bytes.slice(0, 16);
+  const iv = bytes.slice(16, 28);
+  const tag = bytes.slice(28, 44);
+  const ct = bytes.slice(44);
+  const ctWithTag = new Uint8Array(ct.length + tag.length);
+  ctWithTag.set(ct);
+  ctWithTag.set(tag, ct.length);
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(localStorage.getItem("trip-pw")),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"],
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: encJson.iter || 200000, hash: "SHA-256" },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"],
+  );
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ctWithTag);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+function agoLabel(iso) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  if (mins < 24 * 60) return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+async function refreshLiveTrack() {
+  let data;
+  try {
+    // 5-min bucket in the URL to sidestep the raw.githubusercontent CDN cache.
+    const bust = Math.floor(Date.now() / 300000);
+    const resp = await fetch(`${TRACK_URL}?t=${bust}`, { cache: "no-store" });
+    if (!resp.ok) return;
+    data = await decryptBlobJson(await resp.json());
+  } catch {
+    return; // no track published yet, offline, or wrong-password decrypt
+  }
+  const pts = data.points || [];
+  if (pts.length === 0) return;
+  const last = pts[pts.length - 1];
+  const stale = Date.now() - new Date(last.t).getTime() > 12 * 3600 * 1000;
+
+  liveLayer.clearLayers();
+
+  // Breadcrumb trail
+  L.polyline(
+    pts.map((p) => [p.lat, p.lon]),
+    { color: "#4ade80", weight: 3, opacity: 0.9 },
+  ).addTo(liveLayer);
+
+  // inReach messages sent to the shared map
+  pts
+    .filter((p) => p.msg)
+    .forEach((p) => {
+      L.marker([p.lat, p.lon], {
+        icon: L.divIcon({ className: "", html: `<div class="live-msg">💬</div>`, iconSize: [22, 22], iconAnchor: [11, 11] }),
+      })
+        .addTo(liveLayer)
+        .bindPopup(
+          `<b>${escapeHtml(p.msg)}</b><br>${new Date(p.t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
+        );
+    });
+
+  // Current position
+  const lastMarker = L.marker([last.lat, last.lon], {
+    icon: L.divIcon({
+      className: "",
+      html: `<div class="live-dot${stale ? " stale" : ""}"><div class="live-core"></div></div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    }),
+    zIndexOffset: 1000,
+  }).addTo(liveLayer);
+  lastMarker.bindPopup(
+    `<b>Thomas · ${agoLabel(last.t)}</b><br>` +
+      (last.ele != null ? `Elevation ${last.ele.toLocaleString()} m<br>` : "") +
+      (last.spd ? `Moving ${last.spd} km/h<br>` : "") +
+      (data.mapshare ? `<a href="${data.mapshare}" target="_blank" rel="noopener">Open Garmin MapShare ↗</a>` : ""),
+  );
+
+  // Status pill (top-right map control)
+  if (livePillCtl) map.removeControl(livePillCtl);
+  livePillCtl = L.control({ position: "topright" });
+  livePillCtl.onAdd = () => {
+    const el = L.DomUtil.create("div", "live-pill" + (stale ? " stale" : "") + (last.sos ? " sos" : ""));
+    el.innerHTML = last.sos
+      ? `<span class="live-ind"></span>🆘 SOS · ${agoLabel(last.t)}`
+      : `<span class="live-ind"></span>🛰 ${stale ? "Last ping" : "LIVE"} · ${agoLabel(last.t)}${last.ele != null ? ` · ${last.ele.toLocaleString()} m` : ""}`;
+    el.title = "Jump to latest inReach position";
+    L.DomEvent.on(el, "click", (e) => {
+      L.DomEvent.stopPropagation(e);
+      map.flyTo([last.lat, last.lon], Math.max(map.getZoom(), 10), { duration: 0.8 });
+      lastMarker.openPopup();
+    });
+    return el;
+  };
+  livePillCtl.addTo(map);
+}
+
+refreshLiveTrack();
+setInterval(refreshLiveTrack, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshLiveTrack();
+});
+
+// ─────────────────────────────────────────────────────────────
 // Sidebar (day list)
 // ─────────────────────────────────────────────────────────────
 

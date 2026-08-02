@@ -1,0 +1,47 @@
+name: Fetch inReach track
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: track
+  cancel-in-progress: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch and encrypt track
+        env:
+          PASSWORD: ${{ secrets.TRIP_PASSWORD }}
+          MAPSHARE_NAME: ${{ secrets.MAPSHARE_NAME }}
+          MAPSHARE_PASSWORD: ${{ secrets.MAPSHARE_PASSWORD }}
+        run: |
+          # Only run during the trip window; skip quietly if secrets not set yet.
+          today=$(date -u +%F)
+          if [[ "$today" < "2026-08-01" || "$today" > "2026-09-05" ]]; then
+            echo "Outside trip window ($today); skipping." ; exit 0
+          fi
+          if [[ -z "$PASSWORD" || -z "$MAPSHARE_NAME" ]]; then
+            echo "TRIP_PASSWORD / MAPSHARE_NAME secrets not set; skipping." ; exit 0
+          fi
+          node track-fetch.js
+
+      - name: Publish to track branch
+        run: |
+          [[ -f track.enc.json ]] || { echo "No track file; nothing to publish."; exit 0; }
+          git config user.name "inreach-track-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # Single-commit orphan branch: no history buildup, no Pages redeploys.
+          git checkout --orphan track
+          git rm -r --cached . -q
+          git add -f track.enc.json
+          git commit -q -m "inReach track update $(date -u +%FT%TZ)"
+          git push -f origin track

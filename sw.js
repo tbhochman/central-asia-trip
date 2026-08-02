@@ -5,7 +5,7 @@
 // Tiles and ticket files live in separate persistent caches so a shell
 // update never wipes offline map areas or decryptable tickets mid-trip.
 
-const VERSION = "6a9c2890dd2c";
+const VERSION = "0516967aac99";
 const SHELL_CACHE = "shell-" + VERSION;
 const TILES_CACHE = "tiles-v1";
 const FILES_CACHE = "files-v1";
@@ -80,6 +80,27 @@ self.addEventListener("fetch", (e) => {
             return resp;
           }),
       ),
+    );
+    return;
+  }
+
+  // Live inReach track (raw.githubusercontent.com): network-first for fresh
+  // positions, cache fallback so the last-known trail still renders offline.
+  if (url.hostname === "raw.githubusercontent.com") {
+    e.respondWith(
+      fetch(e.request)
+        .then((resp) => {
+          if (resp.ok) {
+            const copy = resp.clone();
+            caches.open(FILES_CACHE).then((c) => c.put(url.pathname, copy));
+          }
+          return resp;
+        })
+        .catch(() =>
+          caches
+            .match(url.pathname)
+            .then((r) => r || new Response("", { status: 503 })),
+        ),
     );
     return;
   }

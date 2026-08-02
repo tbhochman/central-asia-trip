@@ -4,6 +4,10 @@ data.js
 # Plaintext ticket PDFs — never commit. Encrypted copies land in tickets-enc/.
 tickets/
 
+# Local track-fetch.js test output — the real one lives on the `track` branch.
+track.enc.json
+sample.kml
+
 # OS / editor cruft
 .DS_Store
 .vscode/
